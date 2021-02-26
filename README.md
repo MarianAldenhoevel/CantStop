@@ -11,4 +11,6 @@ Can't stop is a simple dice-rolling board game for three players. The objective 
 # Progress
 I have built a representation of the board and the game mechanics. This can be played in the console by people using a simple menu-system. 
 
+![Screenshot](https://github.com/MarianAldenhoevel/CantStop/blob/main/doc/Screenshot%202021-02-26%20122257.png)
+
 That representation can be used as the environment agents will interact with. It offers observation of the current state, gives options for actions and updates state according to the rules.
