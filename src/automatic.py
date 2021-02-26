@@ -111,7 +111,7 @@ def main():
     while (env.winner == -1):
         
         # Print the current board.    
-        env.render(options.colorize)
+        # env.render(options.colorize)
 
         # Find the agent whose turn it is.
         agent = agents[env.current_player]
@@ -120,6 +120,11 @@ def main():
         action = agent.pick_action(env)
 
         if action:
+            print((env.PLAYER_INFO[env.current_player][1] if options.colorize else "") + "Selected action: Player #{current_player} ({name}) plays: {action}.".format(
+                current_player = env.current_player,
+                name = env.PLAYER_INFO[env.current_player][0],
+                action = action[0]) + (colorama.Fore.WHITE if options.colorize else ""))
+
             # Take the action
             env.take_action(action)
         else:
