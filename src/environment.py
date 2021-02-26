@@ -3,6 +3,7 @@ import random
 import logging
 import colorama
 import itertools
+import copy
 
 class Environment():
     
@@ -49,17 +50,19 @@ class Environment():
                 ladder[i] = []
 
         '''
-        self.board[0][0]=[0]
-        self.board[1][1]=[0,1]
-        self.board[2][2]=[0,1,2]
-        self.board[3][3]=[-1]
-
-        print(self.board)
+        # Set up situation for debugging
+        self.board[5][0]=[0]
+        self.board[6][0]=[0]
+        self.in_flight = [
+            [5,0],
+            [6,0]
+        ]
         '''
 
-        # Throw first set of dice
+        # Throw first set of dice and initialize first observation
         self.throw_dice()
-        
+        self.build_observation()
+
     def sorted_pair(self, a, b):
         # Returns a tuple of a and b in sorted order
         return (min(a,b), max(a,b))
@@ -84,12 +87,26 @@ class Environment():
 
         return -1
 
+    def build_observation(self):
+        # (Re-)build the dictionary for the observation
+        self.logger.debug("build_observation()")
+        
+        self.observation = {
+            "board":     copy.deepcopy(self.board),
+            "in_flight": copy.deepcopy(self.in_flight),
+            "phase":     self.phase,
+            "winner":    self.winner
+        }
+
+        self.logger.debug("Observation: " + str(self.observation))
+
     def throw_dice(self):
         self.logger.debug("throw_dice()")
 
         # Throw 4 dice
         self.dice = [random.randint(1,6), random.randint(1,6), random.randint(1,6), random.randint(1,6)]
-        self.dice = [1,1,2,3] # For debugging - can just always play action #1 and will quickly win.
+        #self.dice = [1,1,2,3] # For debugging - can just always play action #1 and will quickly win.
+        #self.dice = [6,5,6,5]
         self.logger.debug("Thrown: " + ", ".join(str(x) for x in self.dice))
 
         # Create all three possible pairs of sums of two dice
@@ -149,9 +166,9 @@ class Environment():
             #    there are only two sums of dice in the combination
             # 3) We can have two separate options of placing just one marker. This happens if in case #2
             #    there are two options but we only have one free in-flight-slot.
-            action = str(comb) + ":"
+            action = ""
             ladders = []
-
+            
             self.logger.debug("can_place = " + str(can_place))
             self.logger.debug("can_progress = " + str(can_progress))
             
@@ -166,6 +183,15 @@ class Environment():
                         new = "new "
                         New = "New "
 
+                    # If we already have two ladders in flight we cannot place a combined action
+                    # for two more ladders. Instead we need to create them as separate actions. Push
+                    # current action and create a new one.
+                    if (self.position_in_ladder_in_flight(prog) == -1) and (len(self.in_flight) == 2): 
+                        if ladders and action:
+                            self.actions.append((str(comb) + ":" + action, ladders))
+                        action = ""
+                        ladders = []
+                
                     if ladders:
                         action += " and " + new + "progress"
                     else:  
@@ -173,14 +199,6 @@ class Environment():
                     action += " on " + str(prog+2)
                     ladders.append(prog)
 
-                    # If we already have two ladders in flight and can potentially place
-                    # markers in two new ladders we have to create two separate actions
-                    # for one marker each. Push the current one and reset to create a new one.
-                    if (len(self.in_flight) == 2) and (len(can_place) > 1):
-                        self.actions.append((action, ladders))
-                        action = str(comb) + ":"
-                        ladders = []
-                
             if can_progress:
                 for prog in can_progress:
                     # if we already have prog in ladders we check for the penultimate current
@@ -188,7 +206,16 @@ class Environment():
                     pos = max(self.position_in_ladder(self.current_player, prog), self.position_in_ladder_in_flight(prog))
                     
                     if (not(prog in ladders)) or (pos < len(self.board[prog])-2):
-
+                        
+                        # If we already have two ladders in flight we cannot place a combined action
+                        # for two more ladders. Instead we need to create them as separate actions. Push
+                        # current action and create a new one.
+                        if (prog not in ladders) and (self.position_in_ladder_in_flight(prog) == -1) and (len(self.in_flight) == 2): 
+                            if ladders and action:
+                                self.actions.append((str(comb) + ":" + action, ladders))
+                            action = ""
+                            ladders = []
+                    
                         if ladders:
                             action += " and progress"
                         else:
@@ -196,8 +223,8 @@ class Environment():
                         action += " on " + str(prog+2)
                         ladders.append(prog)
 
-            if ladders:
-                self.actions.append((action, ladders))
+            if ladders and action:
+                self.actions.append((str(comb) + ":" + action, ladders))
 
     def next_turn(self):
         self.logger.debug("next_turn()")
@@ -293,6 +320,8 @@ class Environment():
                     self.next_turn()
             else:
                 raise ValueError("Unsupported action")
+
+        self.build_observation()    
 
     def render(self, colorize):
         INDENT = 5
