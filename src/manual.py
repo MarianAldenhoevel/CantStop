@@ -1,3 +1,6 @@
+# This is a scaffolding using an instance of Environment allowing it to be played
+# by humans in a console window. 
+
 import logging
 import argparse
 import random
@@ -99,23 +102,28 @@ def main():
     logger = logging.getLogger('Main')
     logger.info('Starting.')
 
-    env = environment.Environment()
-    
-    env.reset()
     user_abort = False
-
+    
+    env = environment.Environment()
+    env.reset()
+    
     while (not user_abort):
         
         selected_action = None
 
         if options.clearscreen:
             colorama.ansi.clear_screen()
-        
+
+        # Print the current board.    
         env.render(options.colorize)
 
+        # Repeat until a valid selection is made.
         while not selected_action:
+            
+            # Print the list of available actions as a menu.
+            
+            # Menu title:
             print()
-
             if env.winner != -1:
                 print("Select action:")
             else:
@@ -124,26 +132,34 @@ def main():
                         name = env.PLAYER_INFO[env.current_player][0]) + (colorama.Fore.WHITE if options.colorize else "") 
                 )
 
-            actions = env.actions
+            # List of actions:
             i = 0
-            for action in actions:
+            for action in env.actions:
                 i += 1
                 print('    {i}: {action}'.format(i = i, action = action[0]))
+            
+            # Add the fixed action to quit the program. That is extraneous to the environment.
             print('    x: Quit game')
 
+            # Read input.
             proposed_action_index = input()
             try: 
+                # Is it an integer?
                 proposed_action_index_int = int(proposed_action_index)-1
-                if (proposed_action_index_int >= 0) and (proposed_action_index_int < len(actions)):
-                    selected_action = actions[proposed_action_index_int]
+                # Yes. Is the integer valid? 
+                if (proposed_action_index_int >= 0) and (proposed_action_index_int < len(env.actions)):
+                    selected_action = env.actions[proposed_action_index_int]
 
             except ValueError:
+                # Not an integer. Check for x to quit. If not 'x' this is not a valid action. 
                 if proposed_action_index.lower() == 'x':
                     selected_action = 'x'
 
+            # Report mis-selection
             if not selected_action:
                 print((colorama.Fore.RED if options.colorize else "") + "Invalid action selected, please try again.")
 
+        # Act on the user-selection. Either quit the program or take the action in the environment. 
         if selected_action == 'x':
             logger.info('User selected quit')
             user_abort = True
